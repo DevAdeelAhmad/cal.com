@@ -28,6 +28,7 @@ import { WipeMyCalActionButton } from "@calcom/web/components/apps/wipemycalothe
 import type { validStatuses } from "~/bookings/lib/validStatuses";
 import { viewParser } from "~/bookings/lib/viewParser";
 
+import { BookingsListLegacyContainer } from "../components/BookingsListLegacyContainer";
 import type { RowData, BookingOutput } from "../types";
 
 const BookingsListContainer = dynamic(() =>
@@ -45,6 +46,7 @@ type BookingsProps = {
   permissions: {
     canReadOthersBookings: boolean;
   };
+  bookingsV3Enabled: boolean;
 };
 
 function useSystemSegments(userId?: number) {
@@ -86,7 +88,7 @@ export default function Bookings(props: BookingsProps) {
   );
 }
 
-function BookingsContent({ status, permissions }: BookingsProps) {
+function BookingsContent({ status, permissions, bookingsV3Enabled }: BookingsProps) {
   const [view] = useQueryState("view", viewParser.withDefault("list"));
   // Force view to be "list" if calendar view is disabled
   const { t } = useLocale();
@@ -240,7 +242,11 @@ function BookingsContent({ status, permissions }: BookingsProps) {
   }, [query.data, status, user?.timeZone]);
 
   const flatData = useMemo<RowData[]>(() => {
-    return [...groupedBookings.today, ...groupedBookings.currentMonth, ...Object.values(groupedBookings.monthBuckets).flat()];
+    return [
+      ...groupedBookings.today,
+      ...groupedBookings.currentMonth,
+      ...Object.values(groupedBookings.monthBuckets).flat(),
+    ];
   }, [groupedBookings]);
 
   const bookingsToday = useMemo<RowData[]>(() => {
@@ -299,7 +305,16 @@ function BookingsContent({ status, permissions }: BookingsProps) {
               {!!bookingsToday.length && status === "upcoming" && (
                 <WipeMyCalActionButton bookingStatus={status} bookingsEmpty={isEmpty} />
               )}
-              {view === "list" ? (
+              {!bookingsV3Enabled && (
+                <BookingsListLegacyContainer
+                  status={status}
+                  permissions={permissions}
+                  data={query.data}
+                  isPending={isPending}
+                  totalRowCount={totalRowCount}
+                />
+              )}
+              {bookingsV3Enabled && view === "list" && (
                 <BookingsListContainer
                   status={status}
                   permissions={permissions}
@@ -307,7 +322,8 @@ function BookingsContent({ status, permissions }: BookingsProps) {
                   isPending={isPending}
                   totalRowCount={totalRowCount}
                 />
-              ) : (
+              )}
+              {bookingsV3Enabled && view === "calendar" && (
                 <BookingsCalendarContainer
                   status={status}
                   permissions={permissions}
