@@ -1,6 +1,44 @@
-# Coolify deployment - External databases
+# Coolify deployment - All services in one project
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  calcom_network:
+    driver: bridge
 
 services:
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - calcom_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - calcom_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   calcom:
     image: calcom.docker.scarf.sh/calcom/cal.com
     build:
@@ -24,6 +62,13 @@ services:
     ports:
       - 3000:3000
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - DATABASE_DIRECT_URL=${DATABASE_DIRECT_URL}
-      - REDIS_URL=${REDIS_URL}
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/postgres
+      - DATABASE_DIRECT_URL=postgresql://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/postgres
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - calcom_network
