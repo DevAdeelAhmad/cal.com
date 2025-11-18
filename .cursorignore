@@ -1,0 +1,5 @@
+!.env
+!.env.example
+!.env.appStore.example
+!.env.appStore
+!.env.prod
