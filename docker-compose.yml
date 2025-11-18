@@ -40,7 +40,6 @@ services:
       retries: 3
 
   calcom:
-    image: calcom.docker.scarf.sh/calcom/cal.com
     build:
       context: .
       dockerfile: Dockerfile
